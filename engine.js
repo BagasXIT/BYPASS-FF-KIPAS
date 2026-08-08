@@ -1,78 +1,71 @@
 (function() {
     'use strict';
 
-    // 1. DONT REDIRECT TO DISCORD / BLOCK NAVIGATION
-    window.location.replace = function(url) {
-        if (url && (url.includes('discord') || url.includes('gg/'))) return;
-        window.location.href = url;
-    };
-    window.location.assign = function(url) {
-        if (url && (url.includes('discord') || url.includes('gg/'))) return;
-        window.location.href = url;
-    };
-
-    // 2. SPOOF NAVIGATOR & REMOVE WEBVIEW BRIDGES
+    // 1. SPUFING UTAMA: Buat WebView terlihat 100% sebagai Chrome Asli di level Browser API
     try {
+        if (!window.chrome) {
+            window.chrome = { runtime: {} };
+        }
         delete window.Android;
         delete window.wv;
+        
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
     } catch(e) {}
 
-    // 3. PAKSA HAPUS ELEMENT ERROR MERAH & REDIRECT DISCORD
-    const killErrorElements = () => {
-        // Cari teks error spesifik
-        const targets = [
-            "verification unavailable",
-            "please use a regular web browser",
-            "verification only works in a real browser",
-            "redirecting to discord",
-            "yah ke fix"
-        ];
+    // 2. MATIKAN FUNGSI DETEKSI / REDIRECT DARI WEBSITE TARGET
+    // Mencegah window.location diubah ke Discord atau ke tampilan error
+    const blockRedirect = () => {
+        window.onbeforeunload = null;
+        
+        const safeAssign = function(url) {
+            if (typeof url === 'string' && (url.includes('discord') || url.includes('gg/'))) {
+                return false;
+            }
+            window.location.href = url;
+        };
 
-        // Sembunyikan elemen teks merah
-        document.querySelectorAll('div, p, span, h1, h2').forEach(el => {
+        window.location.assign = safeAssign;
+        window.location.replace = safeAssign;
+    };
+
+    // 3. SAPU BERSIH OVERLAY & BOX ERROR (DOM KILLER)
+    const sweepErrorUI = () => {
+        // A. Jika seluruh layar berubah menjadi "YAH KE FIX" / Overlay Discord
+        const bodyText = document.body ? document.body.innerText.toLowerCase() : '';
+        if (bodyText.includes("yah ke fix") || bodyText.includes("verification only works in a real browser")) {
+            // Sembunyikan elemen paling luar yang menutupi layar
+            document.querySelectorAll('div').forEach(div => {
+                const txt = div.innerText ? div.innerText.toLowerCase() : '';
+                if (txt.includes("yah ke fix") || txt.includes("redirecting to discord") || txt.includes("join discord")) {
+                    div.style.setProperty('display', 'none', 'important');
+                }
+            });
+        }
+
+        // B. Hapus kotak merah "Verification unavailable..." di atas input UID
+        document.querySelectorAll('div, p, span').forEach(el => {
             if (el.innerText) {
                 const txt = el.innerText.toLowerCase();
-                if (targets.some(key => txt.includes(key))) {
-                    // Jika itu pesan error kotak merah di atas input
-                    const parentRedBox = el.closest('div[class*="red"], div[class*="bg-red"], div[class*="error"], div[class*="border"]');
-                    if (parentRedBox) {
-                        parentRedBox.remove(); // Hapus permanen dari DOM
-                    } else {
-                        el.style.setProperty('display', 'none', 'important');
+                if (txt.includes("verification unavailable") || txt.includes("please use a regular web browser")) {
+                    // Paksa hilangkan kotak error merahnya
+                    const errorBox = el.closest('div');
+                    if (errorBox) {
+                        errorBox.style.setProperty('display', 'none', 'important');
                     }
                 }
             }
         });
-
-        // Jika halaman berubah total jadi layar "Verification only works in a real browser"
-        if (document.body && document.body.innerText.toLowerCase().includes("verification only works in a real browser")) {
-            // Reload atau kembalikan ke halaman verifikasi utama
-            if (window.location.href.includes('verify')) {
-                // Biarkan di halaman tersebut tapi hapus overlay full screen
-                document.querySelectorAll('div').forEach(d => {
-                    if (d.innerText.toLowerCase().includes("redirecting to discord")) {
-                        d.remove();
-                    }
-                });
-            }
-        }
     };
 
     // 4. BYPASS ANTI-ADBLOCK
     window.canRunAds = true;
     window.isAdBlockActive = false;
-    window.show_8923412 = function() {};
 
-    // 5. REMOVE POPUP ADS
-    const removeAds = () => {
-        document.querySelectorAll('iframe[src*="ad"], iframe[src*="pop"], div[id*="pop"], a[href*="monetag"]').forEach(el => el.remove());
-    };
-
-    // Eksekusi super cepat (tiap 20ms) agar pesan error tidak sempat muncul di layar user
+    // Execute secepat mungkin (tiap 10ms)
+    blockRedirect();
     setInterval(() => {
-        killErrorElements();
-        removeAds();
-    }, 20);
+        sweepErrorUI();
+    }, 10);
 
 })();
