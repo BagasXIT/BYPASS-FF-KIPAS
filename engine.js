@@ -12,6 +12,7 @@
         "ad block terdeteksi",
         "matikan adblocker anda",
         "ad was not loaded"
+        "Verification only works in a real browser Redirecting to Discord..."
     ];
 
     // 2. Sembunyikan Pesan Peringatan secara Otomatis
