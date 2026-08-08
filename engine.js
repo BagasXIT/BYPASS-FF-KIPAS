@@ -16,6 +16,7 @@
         "Join Discord",
         "YAH KE FIX Verification only works in a real browser Redirecting to Discord... Join Discord",
         "Join Discord https://dsc.gg/sikipas",
+        "Verification unavailable. Please use a regular web browser.",
     ];
 
     // 2. Sembunyikan Pesan Peringatan secara Otomatis
