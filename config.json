@@ -1,15 +1,21 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "target_url": "https://ffkipas.my.id/verifyuid",
-  "whatsapp_url": "https://whatsapp.com/channel/0029vb6Eym7oQhZLQKN9E3P",
+  "whatsapp_url": "https://whatsapp.com/channel/0029Vb6Eyam7oQhZLQKN9E3P",
   "telegram_url": "https://t.me/BagasXIT",
-  "engine_script_url": "https://raw.githubusercontent.com/BagasXIT/BYPASS-FF-KIPAS/main/engine.js?v=12",
+  "engine_script_url": "https://raw.githubusercontent.com/BagasXIT/BYPASS-FF-KIPAS/main/engine.js?v=14",
+  "dashboard_url": "https://ffkipas.my.id/",
   "blocked_ad_servers": [
-    "googlesyndication.com", "googleservices.com", "doubleclick.net",
-    "adsterra.com", "monetag.com", "propellers.com", "popads.net",
-    "popunder.net", "adfrom.net", "adskeeper.co.uk"
+    "googlesyndication.com",
+    "doubleclick.net",
+    "adsterra.com",
+    "monetag.com",
+    "propellerads.com",
+    "popads.net"
   ],
   "allowed_domains": [
-    "ffkipas.my.id", "discord.com", "accounts.google.com"
+    "ffkipas.my.id",
+    "discord.com",
+    "accounts.google.com"
   ]
 }
