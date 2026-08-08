@@ -1,19 +1,39 @@
 (function() {
     'use strict';
 
-    // 1. SPOOF CLIENT HINTS (Sec-CH-UA) & CHROMIUM OBJECTS
+    // ==========================================
+    // 1. AUTO OPEN CHROME (DART/JALUR DARURAT)
+    // Jika server memblokir API WebView, buka halaman otomatis di Chrome Asli
+    // ==========================================
+    const checkAndRedirectToChrome = () => {
+        const bodyText = document.body ? document.body.innerText.toLowerCase() : '';
+        const isErrorPresent = bodyText.includes("verification unavailable") || 
+                               bodyText.includes("verification only works in a real browser") ||
+                               bodyText.includes("yah ke fix");
+
+        if (isErrorPresent && !window.location.href.includes('intent://')) {
+            const cleanUrl = window.location.href.replace(/^https?:\/\//, '');
+            const chromeIntent = "intent://" + cleanUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+            window.location.href = chromeIntent;
+        }
+    };
+
+    // ==========================================
+    // 2. SPOOFING NAVIGATOR & CLIENT HINTS
+    // Menipu website agar membaca WebView sebagai Google Chrome Murni
+    // ==========================================
     try {
-        // Hilangkan objek bawaan Android WebView
         delete window.Android;
         delete window.wv;
 
-        // Palsukan window.chrome
         window.chrome = {
             app: { isInstalled: false },
             runtime: {}
         };
 
-        // Palsukan UserAgentData (Client Hints) agar terbaca sebagai Chrome Android murni
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
+
         if (navigator.userAgentData) {
             Object.defineProperty(navigator, 'userAgentData', {
                 get: () => ({
@@ -35,48 +55,89 @@
         }
     } catch (e) {}
 
-    // 2. MUTATION OBSERVER (Memantau DOM secara instant tanpa delay interval)
-    const targets = [
+    // ==========================================
+    // 3. BLOCK REDIRECT KE DISCORD
+    // Mencegah halaman mengalihkan aplikasi ke Discord
+    // ==========================================
+    const preventDiscordRedirect = () => {
+        window.onbeforeunload = null;
+        const blockUrl = (url) => typeof url === 'string' && (url.includes('discord') || url.includes('gg/'));
+
+        const origAssign = window.location.assign;
+        window.location.assign = function(url) {
+            if (!blockUrl(url)) origAssign.apply(this, arguments);
+        };
+
+        const origReplace = window.location.replace;
+        window.location.replace = function(url) {
+            if (!blockUrl(url)) origReplace.apply(this, arguments);
+        };
+    };
+
+    // ==========================================
+    // 4. CLEAN DOM & HAPUS ELEMENT ERROR MERAH
+    // Menyapu bersih kotak peringatan di layar
+    // ==========================================
+    const blockedKeywords = [
         "verification unavailable",
         "please use a regular web browser",
         "verification only works in a real browser",
         "redirecting to discord",
-        "yah ke fix"
+        "yah ke fix",
+        "verifikasi cuma bisa lewat browser"
     ];
 
     const cleanDOM = () => {
-        // A. Sembunyikan Overlay Fullscreen / Redirect Discord
-        document.querySelectorAll('div, section, main').forEach(el => {
-            const txt = (el.innerText || '').toLowerCase();
-            if (txt.includes("verification only works in a real browser") || txt.includes("yah ke fix")) {
-                if (el.children.length > 0 && el.innerText.length < 300) {
-                    el.style.setProperty('display', 'none', 'important');
-                }
-            }
-        });
-
-        // B. Hapus Kotak Error Merah "Verification unavailable"
-        document.querySelectorAll('div, p, span').forEach(el => {
-            const txt = (el.innerText || '').toLowerCase();
-            if (txt.includes("verification unavailable") || txt.includes("please use a regular web browser")) {
-                const parentBox = el.closest('div');
-                if (parentBox) {
-                    parentBox.style.setProperty('display', 'none', 'important');
+        document.querySelectorAll('div, p, span, h1, h2, section').forEach(el => {
+            if (el.innerText) {
+                const txt = el.innerText.toLowerCase();
+                if (blockedKeywords.some(kw => txt.includes(kw))) {
+                    const errorCard = el.closest('div') || el;
+                    errorCard.style.setProperty('display', 'none', 'important');
                 }
             }
         });
     };
 
-    // Jalankan observer saat ada perubahan HTML di web
-    const observer = new MutationObserver(() => cleanDOM());
+    // ==========================================
+    // 5. BYPASS ANTI-ADBLOCK & ADS REMOVER
+    // ==========================================
+    window.canRunAds = true;
+    window.isAdBlockActive = false;
+
+    const removeAds = () => {
+        const adSelectors = [
+            'iframe[src*="ad"]',
+            'iframe[src*="pop"]',
+            'div[id*="pop"]',
+            'a[href*="monetag"]',
+            'a[href*="propeller"]'
+        ];
+        adSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => el.remove());
+        });
+    };
+
+    // ==========================================
+    // 6. EXECUTION LOOPS
+    // ==========================================
+    preventDiscordRedirect();
+
+    // Gunakan MutationObserver untuk pembersihan instant
+    const observer = new MutationObserver(() => {
+        cleanDOM();
+        removeAds();
+    });
+
     if (document.documentElement) {
         observer.observe(document.documentElement, { childList: true, subtree: true });
     }
 
-    // Backup interval super cepat
-    setInterval(cleanDOM, 10);
+    // Backup loop berkala
+    setInterval(() => {
+        cleanDOM();
+        removeAds();
+        checkAndRedirectToChrome();
+    }, 100);
 
-    // 3. BYPASS ANTI-ADBLOCK
-    window.canRunAds = true;
-    window.isAdBlockActive = false;
 })();
