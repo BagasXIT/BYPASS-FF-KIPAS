@@ -1,63 +1,106 @@
 // ============================================================
-// DEVIL ENGINE NUKLIR — HANCURKAN PASSWORD GATE + VERIFIKASI
+// DEVIL ENGINE — ANTI-REDIRECT + AUTO VERIFY (SUPER AGGRESSIVE)
 // ============================================================
 (function() {
     'use strict';
-    console.log('[DEVIL] Engine Nuklir aktif!');
+    console.log('[DEVIL] Engine anti-redirect aktif!');
 
     // ---------- 1. KONFIGURASI ----------
     const MY_UID = "123456789"; // Ganti dengan UID FF lu
-    const PASSWORD_GUESS = "kipas123"; // Coba password umum (opsional)
 
-    // ---------- 2. FUNGSI HAPUS OVERLAY PASSWORD ----------
-    function nukePasswordGate() {
-        // Cari elemen dengan teks kunci
+    // ---------- 2. CEGAH REDIRECT (JURUS MATI) ----------
+    // Override location
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+        get: function() { return originalLocation; },
+        set: function(url) {
+            console.log('[DEVIL] Redirect dicegah:', url);
+            return false;
+        }
+    });
+    window.location.href = function(url) {
+        console.log('[DEVIL] Redirect dicegah (href):', url);
+        return false;
+    };
+    window.location.replace = function(url) {
+        console.log('[DEVIL] Redirect.replace dicegah:', url);
+        return false;
+    };
+    window.location.assign = function(url) {
+        console.log('[DEVIL] Redirect.assign dicegah:', url);
+        return false;
+    };
+    window.open = function(url) {
+        console.log('[DEVIL] Popup/redirect dicegah:', url);
+        return null;
+    };
+
+    // Cegah event beforeunload (redirect dari meta refresh)
+    window.addEventListener('beforeunload', function(e) {
+        e.preventDefault();
+        e.returnValue = '';
+        console.log('[DEVIL] Beforeunload dicegah');
+        return false;
+    });
+
+    // Hentikan semua interval/timeout yang mungkin memicu redirect
+    const originalSetTimeout = window.setTimeout;
+    window.setTimeout = function(fn, delay) {
+        if (typeof fn === 'string' && fn.includes('location')) {
+            console.log('[DEVIL] Timeout redirect dicegah');
+            return null;
+        }
+        return originalSetTimeout.apply(this, arguments);
+    };
+
+    // ---------- 3. HAPUS OVERLAY PASSWORD (JIKA MUNCUL) ----------
+    function nukeOverlay() {
+        // Cari elemen dengan teks "PS:" atau "password"
         const keywords = ["PS:", "enter your code", "login and password", "Password:", "Enter password"];
-        let found = false;
         document.querySelectorAll('*').forEach(el => {
             const text = el.innerText || '';
             if (keywords.some(kw => text.includes(kw))) {
-                // Hapus seluruh elemen dan parent-nya
-                let parent = el.closest('div, section, main, body, html');
+                let parent = el.closest('div, section, main, body');
                 if (parent) {
                     parent.style.display = 'none';
                     parent.style.visibility = 'hidden';
                     parent.style.opacity = '0';
                     parent.style.pointerEvents = 'none';
-                    found = true;
                 }
             }
-            // Hapus juga elemen dengan z-index tinggi (modal)
+            // Hapus elemen dengan z-index tinggi (modal)
             const style = getComputedStyle(el);
             if (parseInt(style.zIndex) > 9999 && style.position === 'fixed') {
                 el.style.display = 'none';
             }
         });
-        if (found) console.log('[DEVIL] Password gate dihancurkan!');
+    }
 
-        // Coba isi password jika ada input
-        const pwdInput = document.querySelector('input[type="password"]');
-        if (pwdInput) {
-            pwdInput.value = PASSWORD_GUESS;
-            pwdInput.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = document.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn) btn.click();
-            console.log('[DEVIL] Password diisi & disubmit (tebakan).');
+    // ---------- 4. AUTO FILL UID & VERIFY (SEBELUM REDIRECT) ----------
+    function autoVerify() {
+        const uidInput = document.querySelector('input[type="text"]');
+        if (uidInput) {
+            uidInput.value = MY_UID;
+            uidInput.dispatchEvent(new Event('input', { bubbles: true }));
+            // Cari tombol Verify
+            const btn = document.querySelector('button[type="submit"], .btn-verify, input[type="submit"]');
+            if (btn) {
+                btn.click();
+                console.log('[DEVIL] UID diisi & tombol Verify diklik!');
+            }
         }
     }
 
-    // ---------- 3. INTERCEPT REQUEST AUTENTIKASI ----------
-    // Tangkap semua request yang mengirim password atau kode
+    // ---------- 5. INTERCEPT REQUEST AUTENTIKASI (BYPASS VERIF) ----------
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
         const url = typeof input === 'string' ? input : input.url;
-        if (url && (url.includes('auth') || url.includes('login') || url.includes('password') || url.includes('code'))) {
-            console.log('[DEVIL] Intercept request auth:', url);
-            // Kembalikan respons sukses palsu
+        if (url && (url.includes('verify') || url.includes('uid') || url.includes('whitelist'))) {
+            console.log('[DEVIL] Intercept verifikasi:', url);
             return Promise.resolve(new Response(JSON.stringify({
                 success: true,
-                message: 'Authenticated',
-                token: 'fake-token'
+                message: 'UID verified',
+                data: { uid: MY_UID, status: 'whitelisted' }
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' }
@@ -66,7 +109,6 @@
         return origFetch.call(this, input, init);
     };
 
-    // Intercept XMLHttpRequest
     const XHR = XMLHttpRequest;
     const origOpen = XHR.prototype.open;
     const origSend = XHR.prototype.send;
@@ -75,12 +117,12 @@
         return origOpen.apply(this, arguments);
     };
     XHR.prototype.send = function(body) {
-        if (this._url && (this._url.includes('auth') || this._url.includes('login') || this._url.includes('password') || this._url.includes('code'))) {
-            console.log('[DEVIL] Intercept XHR auth:', this._url);
+        if (this._url && (this._url.includes('verify') || this._url.includes('uid') || this._url.includes('whitelist'))) {
+            console.log('[DEVIL] Intercept XHR verifikasi:', this._url);
             setTimeout(() => {
                 this.readyState = 4;
                 this.status = 200;
-                this.responseText = JSON.stringify({ success: true, token: 'fake' });
+                this.responseText = JSON.stringify({ success: true, data: { uid: MY_UID } });
                 if (this.onreadystatechange) this.onreadystatechange();
             }, 50);
             return;
@@ -88,33 +130,21 @@
         return origSend.apply(this, arguments);
     };
 
-    // ---------- 4. AUTO FILL UID & VERIFIKASI (jika halaman sudah terbuka) ----------
-    function autoVerifyUID() {
-        const uidInput = document.querySelector('input[type="text"]');
-        if (uidInput && (uidInput.placeholder || '').toLowerCase().includes('uid')) {
-            uidInput.value = MY_UID;
-            uidInput.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = document.querySelector('button[type="submit"], .btn-verify');
-            if (btn) setTimeout(() => btn.click(), 300);
-            console.log('[DEVIL] UID diisi otomatis.');
-        }
-    }
-
-    // ---------- 5. EKSEKUSI BERKALA ----------
-    function fullNuke() {
-        nukePasswordGate();
-        autoVerifyUID();
+    // ---------- 6. EKSEKUSI SUPER CEPAT (SETIAP 100ms) ----------
+    function fullAttack() {
+        nukeOverlay();
+        autoVerify();
         // Hapus iklan juga
         document.querySelectorAll('iframe[src*="ad"], iframe[src*="doubleclick"], ins.adsbygoogle')
             .forEach(el => el.remove());
     }
 
-    fullNuke();
-    setInterval(fullNuke, 300);
+    fullAttack();
+    setInterval(fullAttack, 100); // <-- Eksekusi setiap 0.1 detik
 
     // Observer DOM
-    new MutationObserver(fullNuke)
+    new MutationObserver(fullAttack)
         .observe(document.documentElement, { childList: true, subtree: true });
 
-    console.log('[DEVIL] Engine Nuklir siap! Password gate akan hancur.');
+    console.log('[DEVIL] Engine anti-redirect siap! Halaman UID akan tetap terbuka.');
 })();
