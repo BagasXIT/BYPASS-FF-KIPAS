@@ -1,11 +1,11 @@
 // ============================================================
-// DEVIL ENGINE — FINAL NUKLIR (HANCURKAN ERROR + REDIRECT)
+// DEVIL ENGINE — REPLACE HALAMAN SETELAH VERIFIKASI SUKSES
 // ============================================================
 (function() {
     'use strict';
-    console.log('[DEVIL] Nuklir final aktif!');
+    console.log('[DEVIL] Engine replace aktif!');
 
-    // ---------- 1. SPOOFING TOTAL ----------
+    // ---------- 1. SPOOFING WEBVIEW (MASIH DIPERTAHANKAN) ----------
     const fakeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
     const spoof = {
         userAgent: fakeUA,
@@ -16,12 +16,7 @@
         languages: ['en-US', 'en'],
         deviceMemory: 8,
         hardwareConcurrency: 8,
-        maxTouchPoints: 0,
-        cookieEnabled: true,
-        doNotTrack: null,
-        connection: { effectiveType: '4g', rtt: 50, downlink: 10 },
-        mediaDevices: { enumerateDevices: () => Promise.resolve([]) },
-        storage: { estimate: () => Promise.resolve({ quota: 1024**3, usage: 0 }) }
+        maxTouchPoints: 0
     };
     Object.keys(spoof).forEach(k => {
         try { Object.defineProperty(navigator, k, { get: () => spoof[k], configurable: false }); } catch(e) {}
@@ -39,7 +34,7 @@
     window.open = () => null;
     window.addEventListener('beforeunload', (e) => { e.preventDefault(); e.returnValue = ''; });
 
-    // ---------- 3. INTERCEPT VERIFIKASI (SUKSES PALSU) ----------
+    // ---------- 3. INTERCEPT VERIFIKASI ----------
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
         const url = typeof input === 'string' ? input : input.url;
@@ -87,71 +82,110 @@
             if (btn) {
                 btn.click();
                 console.log('[DEVIL] UID diisi & Verify diklik');
+                // Setelah klik, kita tunggu sebentar lalu ganti halaman
+                setTimeout(replacePageWithSuccess, 1500);
+            }
+        } else {
+            // Jika tidak ada input, mungkin halaman sudah dalam status error, kita coba ganti langsung
+            replacePageWithSuccess();
+        }
+    }
+
+    // ---------- 5. REPLACE HALAMAN DENGAN KONTEN SUKSES ----------
+    function replacePageWithSuccess() {
+        // Cek apakah sudah ada tulisan "Berhasil" atau tidak
+        const bodyText = document.body.innerText || '';
+        if (bodyText.includes('Berhasil') || bodyText.includes('success')) {
+            console.log('[DEVIL] Verifikasi terdeteksi sukses, mengganti halaman...');
+            // Buat halaman baru yang bersih
+            const newHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIPAS SERVER</title>
+    <style>
+        body {
+            background: #0b0e14;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            text-align: center;
+        }
+        h1 {
+            color: #E040FB;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #E040FB;
+        }
+        p { color: #aaa; font-size: 1.2em; }
+        .btn {
+            background: #4A148C;
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 20px;
+            box-shadow: 0 0 15px #4A148C;
+        }
+        .btn:hover { background: #6A1B9A; }
+        .footer {
+            margin-top: 50px;
+            color: #555;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>✅ VERIFIKASI SUKSES</h1>
+    <p>Selamat, UID Anda telah terverifikasi.<br>Silakan akses menu utama di bawah.</p>
+    <a href="https://ffkipas.my.id/" class="btn">🚀 MENU UTAMA</a>
+    <div class="footer">© BAGASXIT OFFICIAL</div>
+    <script>
+        // Jika tombol diklik, kita paksa navigasi
+        document.querySelector('.btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'https://ffkipas.my.id/';
+        });
+    <\/script>
+</body>
+</html>
+            `;
+            document.documentElement.innerHTML = newHTML;
+            // Hentikan semua interval/timeout
+            const highestTimeout = setTimeout(() => {}, 9999);
+            for (let i = 0; i < highestTimeout; i++) {
+                clearTimeout(i);
+                clearInterval(i);
             }
         }
     }
 
-    // ---------- 5. EKSEKUSI CEPAT & HANCURKAN ERROR ----------
-    function nukeEverything() {
-        // Hapus semua elemen yang mengandung kata "Verification unavailable" atau "regular web browser"
-        const all = document.querySelectorAll('*');
-        all.forEach(el => {
-            const text = (el.innerText || '').toLowerCase();
-            if (text.includes('verification unavailable') || text.includes('regular web browser') || text.includes('browser tidak didukung')) {
-                let parent = el.closest('div, section, main, body');
-                if (parent) {
-                    parent.style.display = 'none';
-                    parent.style.visibility = 'hidden';
-                    parent.style.opacity = '0';
-                    parent.style.pointerEvents = 'none';
-                    parent.remove(); // brute force hapus dari DOM
-                }
-            }
-            // Hapus modal overlay
-            const style = getComputedStyle(el);
-            if (parseInt(style.zIndex) > 9999 && style.position === 'fixed') {
-                el.remove();
-            }
-        });
-        // Bersihkan body dari semua child kecuali yang penting (tapi kita akan redirect)
-    }
-
-    // Jalankan terus menerus
+    // ---------- 6. EKSEKUSI BERKALA ----------
     autoVerify();
+    // Cek setiap 500ms apakah halaman sudah berubah
     setInterval(() => {
-        nukeEverything();
-        // Cek apakah "Berhasil" muncul dan tidak ada error, lalu redirect
         const bodyText = document.body.innerText || '';
         if (bodyText.includes('Berhasil') && !bodyText.toLowerCase().includes('verification unavailable')) {
-            console.log('[DEVIL] Verifikasi sukses, redirect ke home...');
-            // Redirect ke halaman utama (sesuaikan URL)
-            window.location.replace('https://ffkipas.my.id/');
+            replacePageWithSuccess();
         }
-    }, 100);
+    }, 500);
 
-    // Observer
+    // Observer juga
     new MutationObserver(() => {
-        nukeEverything();
-    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-
-    // ---------- 6. MATIKAN SCRIPT LAIN (OVERRIDE eval, setTimeout) ----------
-    // Hentikan semua setTimeout/setInterval yang mungkin memunculkan error
-    const origSetTimeout = window.setTimeout;
-    window.setTimeout = function(fn, delay) {
-        if (typeof fn === 'string' && (fn.includes('error') || fn.includes('unavailable'))) {
-            console.log('[DEVIL] Timeout error dicegah');
-            return null;
+        const bodyText = document.body.innerText || '';
+        if (bodyText.includes('Berhasil') && !bodyText.toLowerCase().includes('verification unavailable')) {
+            replacePageWithSuccess();
         }
-        return origSetTimeout.apply(this, arguments);
-    };
-    const origSetInterval = window.setInterval;
-    window.setInterval = function(fn, delay) {
-        if (typeof fn === 'string' && (fn.includes('error') || fn.includes('unavailable'))) {
-            console.log('[DEVIL] Interval error dicegah');
-            return null;
-        }
-        return origSetInterval.apply(this, arguments);
-    };
+    }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
-    console.log('[DEVIL] Nuklir final siap! Error akan hancur dan redirect ke home.');
+    console.log('[DEVIL] Engine replace siap! Halaman akan diganti setelah verifikasi sukses.');
 })();
