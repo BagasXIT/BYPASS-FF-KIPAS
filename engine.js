@@ -1,13 +1,14 @@
 // ============================================================
-// DEVIL ENGINE NUKLIR — SPOOF + HAPUS ERROR + REDIRECT
+// DEVIL ENGINE — FINAL NUKLIR (HANCURKAN ERROR + REDIRECT)
 // ============================================================
 (function() {
     'use strict';
-    console.log('[DEVIL] Nuklir engine aktif!');
+    console.log('[DEVIL] Nuklir final aktif!');
 
-    // ---------- 1. SPOOFING WEBVIEW (SEMUA PROPER) ----------
-    const spoofProps = {
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    // ---------- 1. SPOOFING TOTAL ----------
+    const fakeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+    const spoof = {
+        userAgent: fakeUA,
         vendor: 'Google Inc.',
         platform: 'Win32',
         webdriver: false,
@@ -22,127 +23,23 @@
         mediaDevices: { enumerateDevices: () => Promise.resolve([]) },
         storage: { estimate: () => Promise.resolve({ quota: 1024**3, usage: 0 }) }
     };
-    Object.keys(spoofProps).forEach(key => {
-        try {
-            Object.defineProperty(navigator, key, {
-                get: () => spoofProps[key],
-                configurable: false
-            });
-        } catch(e) {}
+    Object.keys(spoof).forEach(k => {
+        try { Object.defineProperty(navigator, k, { get: () => spoof[k], configurable: false }); } catch(e) {}
     });
-
-    // Tambahkan window.chrome
     if (!window.chrome) {
-        window.chrome = {
-            app: { isInstalled: false },
-            runtime: {},
-            loadTimes: () => {},
-            csi: () => {},
-            sendMessage: () => {}
-        };
+        window.chrome = { app: { isInstalled: false }, runtime: {}, loadTimes: () => {}, csi: () => {}, sendMessage: () => {} };
     }
 
-    // ---------- 2. CEGAH REDIRECT ----------
-    const origLocation = window.location;
+    // ---------- 2. CEGAH REDIRECT & POPUP ----------
+    const origLoc = window.location;
     Object.defineProperty(window, 'location', {
-        get: () => origLocation,
+        get: () => origLoc,
         set: (url) => { console.log('[DEVIL] Redirect dicegah:', url); return false; }
     });
     window.open = () => null;
     window.addEventListener('beforeunload', (e) => { e.preventDefault(); e.returnValue = ''; });
 
-    // ---------- 3. HAPUS ELEMEN ERROR (AGRESIF) ----------
-    function nukeErrors() {
-        const errorKeywords = [
-            'verification unavailable', 'please use a regular web browser',
-            'browser tidak didukung', 'gunakan browser biasa', 'webview not supported'
-        ];
-        // Cari semua elemen
-        const all = document.querySelectorAll('*');
-        all.forEach(el => {
-            const text = (el.innerText || '').toLowerCase();
-            if (errorKeywords.some(kw => text.includes(kw))) {
-                // Hapus elemen dan seluruh parent yang mungkin card
-                let parent = el.closest('div, section, main, body');
-                if (parent) {
-                    parent.style.display = 'none';
-                    parent.style.visibility = 'hidden';
-                    parent.style.opacity = '0';
-                    parent.style.pointerEvents = 'none';
-                    console.log('[DEVIL] Error element nuked:', text.substring(0,40));
-                }
-            }
-            // Hapus elemen dengan z-index tinggi (modal)
-            const style = getComputedStyle(el);
-            if (parseInt(style.zIndex) > 9999 && style.position === 'fixed') {
-                el.style.display = 'none';
-            }
-        });
-        // Coba cari berdasarkan XPath (jika ada)
-        try {
-            const xpath = "//*[contains(text(), 'Verification unavailable') or contains(text(), 'Please use a regular web browser')]";
-            const result = document.evaluate(xpath, document, null, XPathResult.ANY_TYPE, null);
-            let node;
-            while (node = result.iterateNext()) {
-                let parent = node.closest('div, section, main');
-                if (parent) parent.style.display = 'none';
-            }
-        } catch(e) {}
-    }
-
-    // ---------- 4. CEGAH PEMBUATAN ELEMEN ERROR (OVERRIDE) ----------
-    const origCreateElement = document.createElement;
-    document.createElement = function(tagName, options) {
-        const el = origCreateElement.call(this, tagName, options);
-        // Jika tag div atau section, kita pantau isinya
-        if (tagName.toLowerCase() === 'div' || tagName.toLowerCase() === 'section') {
-            const origAppendChild = el.appendChild;
-            el.appendChild = function(child) {
-                if (child.nodeType === 1 && child.innerText) {
-                    const text = child.innerText.toLowerCase();
-                    if (text.includes('verification unavailable') || text.includes('please use a regular web browser')) {
-                        console.log('[DEVIL] Mencegah pembuatan error element');
-                        return child;
-                    }
-                }
-                return origAppendChild.call(this, child);
-            };
-            // Juga cegah innerHTML
-            const origSetInner = Object.getOwnPropertyDescriptor(el, 'innerHTML');
-            if (origSetInner) {
-                Object.defineProperty(el, 'innerHTML', {
-                    set: function(value) {
-                        if (value && (value.toLowerCase().includes('verification unavailable') || value.toLowerCase().includes('please use a regular web browser'))) {
-                            console.log('[DEVIL] Mencegah innerHTML error');
-                            return;
-                        }
-                        origSetInner.set.call(this, value);
-                    },
-                    get: origSetInner.get
-                });
-            }
-        }
-        return el;
-    };
-
-    // ---------- 5. AUTO VERIFY UID ----------
-    function autoVerify() {
-        const uidInput = document.querySelector('input[type="text"]');
-        if (uidInput) {
-            const uid = "14645454545"; // Ganti dengan UID asli
-            uidInput.value = uid;
-            uidInput.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = document.querySelector('button[type="submit"], .btn-verify, input[type="submit"]');
-            if (btn) {
-                btn.click();
-                console.log('[DEVIL] UID diisi & Verify diklik');
-                // Setelah klik, kita tunggu sebentar lalu hapus error
-                setTimeout(nukeErrors, 200);
-            }
-        }
-    }
-
-    // ---------- 6. INTERCEPT REQUEST VERIFIKASI ----------
+    // ---------- 3. INTERCEPT VERIFIKASI (SUKSES PALSU) ----------
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
         const url = typeof input === 'string' ? input : input.url;
@@ -159,7 +56,6 @@
         }
         return origFetch.call(this, input, init);
     };
-
     const XHR = XMLHttpRequest;
     const origOpen = XHR.prototype.open;
     const origSend = XHR.prototype.send;
@@ -181,33 +77,81 @@
         return origSend.apply(this, arguments);
     };
 
-    // ---------- 7. EKSEKUSI CEPAT (50ms) ----------
-    function attack() {
-        nukeErrors();
-        autoVerify();
-        // Hapus iklan juga
-        document.querySelectorAll('iframe[src*="ad"], iframe[src*="doubleclick"], ins.adsbygoogle')
-            .forEach(el => el.remove());
+    // ---------- 4. AUTO VERIFY ----------
+    function autoVerify() {
+        const uidInput = document.querySelector('input[type="text"]');
+        if (uidInput) {
+            uidInput.value = '14645454545';
+            uidInput.dispatchEvent(new Event('input', { bubbles: true }));
+            const btn = document.querySelector('button[type="submit"], .btn-verify, input[type="submit"]');
+            if (btn) {
+                btn.click();
+                console.log('[DEVIL] UID diisi & Verify diklik');
+            }
+        }
     }
 
-    attack();
-    setInterval(attack, 50); // setiap 50ms
+    // ---------- 5. EKSEKUSI CEPAT & HANCURKAN ERROR ----------
+    function nukeEverything() {
+        // Hapus semua elemen yang mengandung kata "Verification unavailable" atau "regular web browser"
+        const all = document.querySelectorAll('*');
+        all.forEach(el => {
+            const text = (el.innerText || '').toLowerCase();
+            if (text.includes('verification unavailable') || text.includes('regular web browser') || text.includes('browser tidak didukung')) {
+                let parent = el.closest('div, section, main, body');
+                if (parent) {
+                    parent.style.display = 'none';
+                    parent.style.visibility = 'hidden';
+                    parent.style.opacity = '0';
+                    parent.style.pointerEvents = 'none';
+                    parent.remove(); // brute force hapus dari DOM
+                }
+            }
+            // Hapus modal overlay
+            const style = getComputedStyle(el);
+            if (parseInt(style.zIndex) > 9999 && style.position === 'fixed') {
+                el.remove();
+            }
+        });
+        // Bersihkan body dari semua child kecuali yang penting (tapi kita akan redirect)
+    }
+
+    // Jalankan terus menerus
+    autoVerify();
+    setInterval(() => {
+        nukeEverything();
+        // Cek apakah "Berhasil" muncul dan tidak ada error, lalu redirect
+        const bodyText = document.body.innerText || '';
+        if (bodyText.includes('Berhasil') && !bodyText.toLowerCase().includes('verification unavailable')) {
+            console.log('[DEVIL] Verifikasi sukses, redirect ke home...');
+            // Redirect ke halaman utama (sesuaikan URL)
+            window.location.replace('https://ffkipas.my.id/');
+        }
+    }, 100);
 
     // Observer
-    new MutationObserver(attack)
-        .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+    new MutationObserver(() => {
+        nukeEverything();
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true });
 
-    // ---------- 8. REDIRECT KE HALAMAN UTAMA (jika verifikasi sukses) ----------
-    // Setelah beberapa detik, cek apakah ada "Berhasil" dan tidak ada error, lalu pindah ke halaman utama
-    setTimeout(() => {
-        const hasSuccess = document.body.innerText.includes('Berhasil');
-        const hasError = document.body.innerText.toLowerCase().includes('verification unavailable');
-        if (hasSuccess && !hasError) {
-            // Redirect ke halaman utama KIPAS SERVER (ganti dengan URL yang benar)
-            window.location.replace('https://ffkipas.my.id/'); // atau /dashboard
-            console.log('[DEVIL] Verifikasi sukses, redirect ke home.');
+    // ---------- 6. MATIKAN SCRIPT LAIN (OVERRIDE eval, setTimeout) ----------
+    // Hentikan semua setTimeout/setInterval yang mungkin memunculkan error
+    const origSetTimeout = window.setTimeout;
+    window.setTimeout = function(fn, delay) {
+        if (typeof fn === 'string' && (fn.includes('error') || fn.includes('unavailable'))) {
+            console.log('[DEVIL] Timeout error dicegah');
+            return null;
         }
-    }, 2000);
+        return origSetTimeout.apply(this, arguments);
+    };
+    const origSetInterval = window.setInterval;
+    window.setInterval = function(fn, delay) {
+        if (typeof fn === 'string' && (fn.includes('error') || fn.includes('unavailable'))) {
+            console.log('[DEVIL] Interval error dicegah');
+            return null;
+        }
+        return origSetInterval.apply(this, arguments);
+    };
 
-    console.log('[DEVIL] Engine Nuklir siap! Error akan dihancurkan.');
+    console.log('[DEVIL] Nuklir final siap! Error akan hancur dan redirect ke home.');
 })();
