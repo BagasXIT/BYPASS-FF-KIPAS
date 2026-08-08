@@ -1,47 +1,39 @@
 (function() {
     'use strict';
 
-    // 1. Bypass Anti-Adblock / Fake Ad-blocker Checkers
-    window.canRunAds = true;
-    window.isAdBlockActive = false;
-    window.show_8923412 = function() {}; // Dummy function untuk Monetag/PopUnder
-    window.monetag = window.monetag || {};
-    
-    // 2. Sembunyikan Pesan Error "Ad was not loaded" jika sempat muncul
-    const hideErrorMsg = () => {
-        const errorBoxes = document.querySelectorAll('div, p, span');
-        errorBoxes.forEach(el => {
-            if (el.innerText && el.innerText.includes("Ad was not loaded")) {
-                el.style.display = 'none';
+    // 1. Sembunyikan & Hapus Tampilan Error "YAH KE FIX" secara paksa
+    const forceBypassWebViewCheck = () => {
+        // Jika terdapat elemen teks "YAH KE FIX" atau "Verifikasi cuma bisa lewat browser", sembunyikan/hapus
+        document.querySelectorAll('div, p, h1, h2, span').forEach(el => {
+            if (el.innerText && (el.innerText.includes("YAH KE FIX") || el.innerText.includes("Verifikasi cuma bisa lewat browser"))) {
+                const parentCard = el.closest('div');
+                if (parentCard) parentCard.style.display = 'none';
             }
         });
     };
 
-    // 3. Auto-remove Iklan & Pop-ups Tanpa Memicu Error
-    const removeAds = () => {
-        // Hapus Iklan Pop-under / Overlay
-        const adSelectors = [
-            'iframe[src*="ad"]',
-            'iframe[src*="pop"]',
-            'div[id*="pop"]',
-            'div[class*="ad-"]',
-            'a[href*="monetag"]',
-            'a[href*="propeller"]'
-        ];
-        
-        adSelectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(el => el.remove());
+    // 2. Palsukan Objek Navigator & Window agar terbaca sebagai Browser Chrome Resmi
+    try {
+        Object.defineProperty(navigator, 'userAgent', {
+            get: function () { return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'; }
         });
-    };
+        Object.defineProperty(navigator, 'vendor', { get: function () { return 'Google Inc.'; } });
+        Object.defineProperty(navigator, 'webdriver', { get: function () { return false; } });
+    } catch (e) {}
 
-    // Jalankan pembersihan secara periodik
+    // Hapus JEJAK khas WebView Android
+    delete window.Android;
+    delete window.wv;
+    delete window.chrome; // reset jika ada inject palsu
+
+    // 3. Bypass Anti-Adblock (Keep existing logic)
+    window.canRunAds = true;
+    window.isAdBlockActive = false;
+    window.show_8923412 = function() {};
+
+    // Run terus menerus untuk memastikan elemen deteksi langsung hilang saat dirender
     setInterval(() => {
-        hideErrorMsg();
-        removeAds();
-    }, 500);
+        forceBypassWebViewCheck();
+    }, 100);
 
-    // Override window.open agar iklan tab baru/pop-up tidak bisa terbuka
-    window.open = function() {
-        return null;
-    };
 })();
