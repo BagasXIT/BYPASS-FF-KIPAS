@@ -1,22 +1,40 @@
+
 (function() {
     'use strict';
 
-    // 1. Sembunyikan pesan "YAH KE FIX" tanpa merusak Cloudflare Turnstile
+    // 1. DAFTAR KATA PENGERINGATAN / ERROR YANG INGIN DIBLOKIR
+    // Tambahkan kata baru di dalam tanda kurung siku ini (pisahkan dengan koma)
+    const blockedTexts = [
+        "yah ke fix",
+        "verifikasi cuma bisa lewat browser",
+        "browser tidak didukung",
+        "silakan buka di chrome",
+        "ad block terdeteksi",
+        "matikan adblocker anda",
+        "ad was not loaded"
+    ];
+
+    // 2. Sembunyikan Pesan Peringatan secara Otomatis
     const bypassWebViewCheck = () => {
-        document.querySelectorAll('div, p, h1, h2, span').forEach(el => {
-            if (el.innerText && (el.innerText.includes("YAH KE FIX") || el.innerText.includes("Verifikasi cuma bisa lewat browser"))) {
-                const parentCard = el.closest('div');
-                if (parentCard) parentCard.style.display = 'none';
+        document.querySelectorAll('div, p, h1, h2, span, section').forEach(el => {
+            if (el.innerText) {
+                const currentText = el.innerText.toLowerCase();
+                const isBlocked = blockedTexts.some(keyword => currentText.includes(keyword));
+                
+                if (isBlocked) {
+                    const parentCard = el.closest('div') || el;
+                    parentCard.style.display = 'none';
+                }
             }
         });
     };
 
-    // 2. Bypass Anti-Adblock (Keep Monetag/PropellerAds Spoofing)
+    // 3. Bypass Anti-Adblock (Spoofing Monetag / PropellerAds)
     window.canRunAds = true;
     window.isAdBlockActive = false;
     window.show_8923412 = function() {};
 
-    // 3. Auto Remove Ads Element
+    // 4. Auto Remove Elements Iklan
     const removeAds = () => {
         const adSelectors = [
             'iframe[src*="ad"]',
@@ -30,6 +48,7 @@
         });
     };
 
+    // Jalankan pemeriksaan secara terus-menerus
     setInterval(() => {
         bypassWebViewCheck();
         removeAds();
