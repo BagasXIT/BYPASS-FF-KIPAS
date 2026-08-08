@@ -1,73 +1,46 @@
 (function() {
     'use strict';
 
-    // 1. SPOOF CLIENT HINTS & CHROMIUM OBJECTS
+    // 1. SPOOF NAVIGATOR SECARA DEEP
     try {
         delete window.Android;
         delete window.wv;
+        window.chrome = { runtime: {} };
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    } catch(e) {}
 
-        window.chrome = {
-            app: { isInstalled: false },
-            runtime: {}
-        };
-
-        if (navigator.userAgentData) {
-            Object.defineProperty(navigator, 'userAgentData', {
-                get: () => ({
-                    brands: [
-                        { brand: 'Not A;Brand', version: '99' },
-                        { brand: 'Chromium', version: '122' },
-                        { brand: 'Google Chrome', version: '122' }
-                    ],
-                    mobile: true,
-                    platform: 'Android',
-                    getHighEntropyValues: () => Promise.resolve({
-                        architecture: 'arm',
-                        bitness: '64',
-                        model: 'SM-S918B',
-                        platformVersion: '13.0.0'
-                    })
-                })
-            });
-        }
-    } catch (e) {}
-
-    // 2. CLEANDOM PRESISI (Hanya sembunyikan kotak error merah)
-    const cleanDOM = () => {
-        // Hapus HANYA elemen yang berisi teks error merah, tanpa menghapus kartu utama
-        document.querySelectorAll('div, p, span').forEach(el => {
-            const txt = (el.innerText || '').toLowerCase();
-            
-            // Cek jika elemen berisi teks error "Verification unavailable"
-            if (txt.includes("verification unavailable") || txt.includes("please use a regular web browser")) {
-                // Pastikan yang disembunyikan HANYA kotak merah kecilnya
-                if (el.children.length === 0 || el.tagName.toLowerCase() === 'p' || el.tagName.toLowerCase() === 'span') {
-                    const redBox = el.closest('div');
-                    if (redBox && !redBox.innerText.toLowerCase().includes("verify your uid")) {
-                        redBox.style.setProperty('display', 'none', 'important');
-                    }
+    // 2. HIJACK TOMBOL "VERIFY UID"
+    // Begitu user menekan tombol VERIFY UID, buka otomatis via Chrome Intent
+    const interceptVerifyButton = () => {
+        const verifyBtn = document.querySelector('button, a, input[type="submit"]');
+        
+        document.querySelectorAll('*').forEach(el => {
+            if (el.innerText && el.innerText.toUpperCase().includes('VERIFY UID')) {
+                // Bersihkan event listener bawaan web target
+                const newBtn = el.cloneNode(true);
+                if (el.parentNode) {
+                    el.parentNode.replaceChild(newBtn, el);
                 }
-            }
 
-            // Sembunyikan layar overlay "YAH KE FIX" jika muncul terpisah
-            if (txt.includes("verification only works in a real browser") || txt.includes("redirecting to discord")) {
-                if (!txt.includes("verify your uid")) {
-                    el.style.setProperty('display', 'none', 'important');
-                }
+                // Tambahkan aksi paksa buka Chrome
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Ambil UID yang diinput user
+                    const inputEl = document.querySelector('input[type="text"], input[type="number"]');
+                    const uid = inputEl ? inputEl.value : '';
+
+                    // Buka URL saat ini langsung di Google Chrome Asli
+                    const targetUrl = window.location.href.replace(/^https?:\/\//, '');
+                    const intentUrl = "intent://" + targetUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+                    
+                    window.location.href = intentUrl;
+                }, true);
             }
         });
     };
 
-    // Jalankan observer saat ada perubahan HTML di web
-    const observer = new MutationObserver(() => cleanDOM());
-    if (document.documentElement) {
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-    }
-
-    // Backup interval super cepat
-    setInterval(cleanDOM, 10);
-
-    // 3. BYPASS ANTI-ADBLOCK
-    window.canRunAds = true;
-    window.isAdBlockActive = false;
+    // Jalankan pemantauan tombol secara berkala
+    setInterval(interceptVerifyButton, 300);
 })();
