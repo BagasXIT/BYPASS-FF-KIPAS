@@ -11,8 +11,10 @@
         "silakan buka di chrome",
         "ad block terdeteksi",
         "matikan adblocker anda",
-        "ad was not loaded"
-        "Verification only works in a real browser Redirecting to Discord..."
+        "ad was not loaded",
+        "Verification only works in a real browser Redirecting to Discord...",
+        "JOIN DISCORD"
+    
     ];
 
     // 2. Sembunyikan Pesan Peringatan secara Otomatis
