@@ -1,49 +1,55 @@
 (function() {
     'use strict';
 
-    // 1. SPOOFING NAVIGATOR
-    try {
-        delete window.Android;
-        delete window.wv;
-        if (!window.chrome) window.chrome = { runtime: {} };
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
-    } catch(e) {}
+    // 1. DAFTAR KATA PENGERINGATAN / ERROR YANG INGIN DIBLOKIR
+    // Tambahkan kata baru di dalam tanda kurung siku ini (pisahkan dengan koma)
+    const blockedTexts = [
+        "yah ke fix",
+        "verifikasi cuma bisa lewat browser",
+        "browser tidak didukung",
+        "silakan buka di chrome",
+        "ad block terdeteksi",
+        "matikan adblocker anda",
+        "ad was not loaded"
+    ];
 
-    // 2. PEMBERSINAN PRESISI (KARTU UTAMA TIDAK AKAN HILANG)
-    const fixUI = () => {
-        document.querySelectorAll('p, span, div').forEach(el => {
+    // 2. Sembunyikan Pesan Peringatan secara Otomatis
+    const bypassWebViewCheck = () => {
+        document.querySelectorAll('div, p, h1, h2, span, section').forEach(el => {
             if (el.innerText) {
-                const txt = el.innerText.toLowerCase();
-
-                // Deteksi teks pesan error
-                if (txt.includes("verification unavailable") || 
-                    txt.includes("please use a regular web browser") || 
-                    txt.includes("verification only works in a real browser") ||
-                    txt.includes("yah ke fix")) {
-                    
-                    // Ambil pembungkus terdekat
-                    const parent = el.closest('div');
-                    
-                    if (parent) {
-                        // JIKA parent mengandung judul 'VERIFY YOUR UID' atau kolom Input, HANYA sembunyikan teks errornya!
-                        if (parent.innerText.toUpperCase().includes('VERIFY YOUR UID') || parent.querySelector('input')) {
-                            el.style.setProperty('display', 'none', 'important');
-                        } else {
-                            // Jika ini elemen error terpisah di luar form, baru sembunyikan parent-nya
-                            parent.style.setProperty('display', 'none', 'important');
-                        }
-                    } else {
-                        el.style.setProperty('display', 'none', 'important');
-                    }
+                const currentText = el.innerText.toLowerCase();
+                const isBlocked = blockedTexts.some(keyword => currentText.includes(keyword));
+                
+                if (isBlocked) {
+                    const parentCard = el.closest('div') || el;
+                    parentCard.style.display = 'none';
                 }
             }
         });
     };
 
-    // Jalankan pembersihan secara berskala
-    setInterval(fixUI, 150);
-
-    // 3. BYPASS ANTI-ADBLOCK
+    // 3. Bypass Anti-Adblock (Spoofing Monetag / PropellerAds)
     window.canRunAds = true;
     window.isAdBlockActive = false;
+    window.show_8923412 = function() {};
+
+    // 4. Auto Remove Elements Iklan
+    const removeAds = () => {
+        const adSelectors = [
+            'iframe[src*="ad"]',
+            'iframe[src*="pop"]',
+            'div[id*="pop"]',
+            'a[href*="monetag"]',
+            'a[href*="propeller"]'
+        ];
+        adSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => el.remove());
+        });
+    };
+
+    // Jalankan pemeriksaan secara terus-menerus
+    setInterval(() => {
+        bypassWebViewCheck();
+        removeAds();
+    }, 300);
 })();
