@@ -1,38 +1,47 @@
 (function() {
-    console.log("BAGASXIT Engine Loaded Successfully");
+    'use strict';
 
-    // 1. Anti Deteksi WebView
-    try {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-        window.open = function(url) { 
-            console.log('Blocked pop-up: ' + url); 
-            return null; 
-        };
-    } catch(e) {}
-
-    // 2. Pembersih Iklan Agresif
-    function killAds() {
-        const selectors = [
-            'iframe', 'ins', 'div[class*="ads"]', 'div[id*="ads"]', 
-            'div[class*="pop"]', 'div[id*="pop"]', 'a[href*="adsterra"]', 
-            'a[href*="monetag"]', 'a[href*="propellerads"]', '.banner-ads', 
-            '[class*="sticky"]', '[id*="google_ads"]'
-        ];
-        selectors.forEach(s => {
-            document.querySelectorAll(s).forEach(el => el.remove());
+    // 1. Bypass Anti-Adblock / Fake Ad-blocker Checkers
+    window.canRunAds = true;
+    window.isAdBlockActive = false;
+    window.show_8923412 = function() {}; // Dummy function untuk Monetag/PopUnder
+    window.monetag = window.monetag || {};
+    
+    // 2. Sembunyikan Pesan Error "Ad was not loaded" jika sempat muncul
+    const hideErrorMsg = () => {
+        const errorBoxes = document.querySelectorAll('div, p, span');
+        errorBoxes.forEach(el => {
+            if (el.innerText && el.innerText.includes("Ad was not loaded")) {
+                el.style.display = 'none';
+            }
         });
-    }
+    };
 
-    // Jalankan eksekusi awal & pantau perubahan elemen (MutationObserver)
-    killAds();
-    if (document.body) {
-        new MutationObserver(killAds).observe(document.body, { childList: true, subtree: true });
-    }
+    // 3. Auto-remove Iklan & Pop-ups Tanpa Memicu Error
+    const removeAds = () => {
+        // Hapus Iklan Pop-under / Overlay
+        const adSelectors = [
+            'iframe[src*="ad"]',
+            'iframe[src*="pop"]',
+            'div[id*="pop"]',
+            'div[class*="ad-"]',
+            'a[href*="monetag"]',
+            'a[href*="propeller"]'
+        ];
+        
+        adSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => el.remove());
+        });
+    };
 
-    // Blokir klik elemen link iklan
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.tagName === 'A' && e.target.href && e.target.href.includes('ads')) {
-            e.preventDefault();
-        }
-    }, true);
+    // Jalankan pembersihan secara periodik
+    setInterval(() => {
+        hideErrorMsg();
+        removeAds();
+    }, 500);
+
+    // Override window.open agar iklan tab baru/pop-up tidak bisa terbuka
+    window.open = function() {
+        return null;
+    };
 })();
