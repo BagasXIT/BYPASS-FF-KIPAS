@@ -1,46 +1,41 @@
 (function() {
     'use strict';
 
-    // 1. SPOOF NAVIGATOR SECARA DEEP
+    // 1. ELSAM SPOOFING (Tanpa manipulasi berlebihan yang bikin crash)
     try {
         delete window.Android;
         delete window.wv;
-        window.chrome = { runtime: {} };
+        
+        if (!window.chrome) {
+            window.chrome = { runtime: {} };
+        }
+        
         Object.defineProperty(navigator, 'webdriver', { get: () => false });
     } catch(e) {}
 
-    // 2. HIJACK TOMBOL "VERIFY UID"
-    // Begitu user menekan tombol VERIFY UID, buka otomatis via Chrome Intent
-    const interceptVerifyButton = () => {
-        const verifyBtn = document.querySelector('button, a, input[type="submit"]');
-        
-        document.querySelectorAll('*').forEach(el => {
-            if (el.innerText && el.innerText.toUpperCase().includes('VERIFY UID')) {
-                // Bersihkan event listener bawaan web target
-                const newBtn = el.cloneNode(true);
-                if (el.parentNode) {
-                    el.parentNode.replaceChild(newBtn, el);
+    // 2. PEMBERSIN KOTAK ERROR MERAH PRESISI
+    const fixUI = () => {
+        // Cari elemen yang berisi teks error "Verification unavailable"
+        document.querySelectorAll('div').forEach(div => {
+            if (div.children.length === 0 || div.querySelectorAll('div').length === 0) {
+                const txt = (div.innerText || '').toLowerCase();
+                if (txt.includes("verification unavailable") || txt.includes("please use a regular web browser")) {
+                    // Sembunyikan HANYA kontainer merah kecilnya
+                    const alertBox = div.closest('div[class*="bg-"]');
+                    if (alertBox) {
+                        alertBox.style.setProperty('display', 'none', 'important');
+                    } else {
+                        div.style.setProperty('display', 'none', 'important');
+                    }
                 }
-
-                // Tambahkan aksi paksa buka Chrome
-                newBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Ambil UID yang diinput user
-                    const inputEl = document.querySelector('input[type="text"], input[type="number"]');
-                    const uid = inputEl ? inputEl.value : '';
-
-                    // Buka URL saat ini langsung di Google Chrome Asli
-                    const targetUrl = window.location.href.replace(/^https?:\/\//, '');
-                    const intentUrl = "intent://" + targetUrl + "#Intent;scheme=https;package=com.android.chrome;end";
-                    
-                    window.location.href = intentUrl;
-                }, true);
             }
         });
     };
 
-    // Jalankan pemantauan tombol secara berkala
-    setInterval(interceptVerifyButton, 300);
+    // Run interval stabil (tiap 200ms agar tidak memberatkan CPU/RAM)
+    setInterval(fixUI, 200);
+
+    // 3. BYPASS ANTI-ADBLOCK
+    window.canRunAds = true;
+    window.isAdBlockActive = false;
 })();
